@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
         self._current_page: int = 0
         self._worker: Optional[ConversionWorker] = None
         self._recent: List[str] = []
+        self._svg_mode_warned: bool = False  # SVGモード警告を一度だけ表示するフラグ
 
         self._build_ui()
         self._build_menu()
@@ -269,9 +270,27 @@ class MainWindow(QMainWindow):
         self._pages = pages
         self._progress_bar.setVisible(False)
         total = len(pages)
-        self._status_label.setText(
-            f"{total} ページを読み込みました"
-        )
+
+        # 使用した変換モードをステータスバーに表示
+        if pages and pages[0].png_bytes:
+            mode = "Visio COM (高品質)"
+            self._status_label.setToolTip("")
+        else:
+            mode = "SVG モード ※Visioなし"
+            self._status_label.setToolTip(
+                "Microsoft Visio が見つからないため SVG 変換を使用しています。\n"
+                "Visio をインストールすると印刷範囲に忠実な高品質表示になります。"
+            )
+            if not self._svg_mode_warned:
+                self._svg_mode_warned = True
+                QMessageBox.information(
+                    self,
+                    "SVG モードで動作中",
+                    "Microsoft Visio が見つからないため、SVG 変換モードで表示しています。\n\n"
+                    "図形の配置やフォントが実際と異なる場合があります。\n"
+                    "高品質表示には Microsoft Visio のインストールが必要です。",
+                )
+        self._status_label.setText(f"{total} ページ読み込み完了  [{mode}]")
         self._update_nav_controls()
 
     def _on_error(self, msg: str) -> None:
