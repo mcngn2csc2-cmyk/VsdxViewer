@@ -23,16 +23,21 @@ from typing import List
 class PageInfo:
     index: int
     name: str
-    svg: str  # raw SVG XML string
+    svg: str = ""            # SVG文字列（SVG変換モード）
+    png_bytes: bytes = b""   # PNG画像データ（Visio COMモード）
 
 
 def convert_vsdx(path: str | os.PathLike) -> List[PageInfo]:
     """Convert *path* (.vsdx) and return one :class:`PageInfo` per page.
 
+    Visio COM（win32com + PyMuPDF）が利用可能な場合は印刷範囲に忠実な
+    PDF→PNG変換を優先する。利用不可の場合は libvisio-ng によるSVG変換に
+    フォールバックする。
+
     Raises
     ------
     ImportError
-        If libvisio-ng is not installed.
+        If libvisio-ng is not installed and Visio COM is unavailable.
     RuntimeError
         If the file cannot be converted.
     """
@@ -42,6 +47,14 @@ def convert_vsdx(path: str | os.PathLike) -> List[PageInfo]:
     if path.suffix.lower() not in (".vsdx", ".vsd"):
         raise ValueError(f"Unsupported file type: {path.suffix}")
 
+    # Visio COM経由の高品質変換を優先
+    try:
+        from pdf_converter import convert_vsdx_via_visio  # noqa: PLC0415
+        return convert_vsdx_via_visio(path)
+    except Exception:
+        pass
+
+    # フォールバック: libvisio-ng によるSVG変換
     raw_pages = _run_libvisio_ng(path)
     return [
         PageInfo(index=i, name=name or f"Page {i + 1}", svg=svg)

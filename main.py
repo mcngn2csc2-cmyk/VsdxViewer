@@ -257,23 +257,22 @@ class MainWindow(QMainWindow):
     def _on_progress(self, pct: int) -> None:
         self._progress_bar.setValue(pct)
 
-    def _on_page_ready(self, index: int, name: str, svg: str) -> None:
-        self._thumbnail_panel.add_page(index, name, svg)
-        if index == 0:
-            # Show first page immediately as it arrives
-            self._show_page_svg(svg, index)
+    def _on_page_ready(self, page) -> None:
+        self._thumbnail_panel.add_page(page)
+        if page.index == 0:
+            # 最初のページは到着したらすぐ表示
+            self._show_page_content(page)
+            total = self._thumbnail_panel.page_count()
+            self._page_label.setText(f"  1 / {total if total > 0 else '?'}  ")
 
     def _on_finished(self, pages: list) -> None:
         self._pages = pages
         self._progress_bar.setVisible(False)
         total = len(pages)
         self._status_label.setText(
-            f"Loaded {total} page{'s' if total != 1 else ''}"
+            f"{total} ページを読み込みました"
         )
         self._update_nav_controls()
-        # Ensure first page is visible
-        if self._pages:
-            self._show_page(0)
 
     def _on_error(self, msg: str) -> None:
         self._progress_bar.setVisible(False)
@@ -292,20 +291,23 @@ class MainWindow(QMainWindow):
     def _show_page(self, index: int) -> None:
         if 0 <= index < len(self._pages):
             self._current_page = index
-            self._show_page_svg(self._pages[index].svg, index)
+            self._show_page_content(self._pages[index])
             self._thumbnail_panel.select_page(index)
             self._update_nav_controls()
 
-    def _show_page_svg(self, svg: str, index: int) -> None:
-        self._web_viewer.load_page(svg)
+    def _show_page_content(self, page) -> None:
+        if page.png_bytes:
+            self._web_viewer.load_page_image(page.png_bytes)
+        else:
+            self._web_viewer.load_page(page.svg)
         total = max(len(self._pages), self._thumbnail_panel.page_count())
         if total > 0:
-            self._page_label.setText(f"  {index + 1} / {total}  ")
+            self._page_label.setText(f"  {page.index + 1} / {total}  ")
 
     def _on_page_selected(self, index: int) -> None:
         if 0 <= index < len(self._pages):
             self._current_page = index
-            self._show_page_svg(self._pages[index].svg, index)
+            self._show_page_content(self._pages[index])
             self._update_nav_controls()
 
     def _prev_page(self) -> None:

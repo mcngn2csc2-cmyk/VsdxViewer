@@ -1,2 +1,4 @@
 libvisio-ng>=0.6.0
 PySide6>=6.6.0
+PyMuPDF>=1.23.0
+pywin32>=306

@@ -5,8 +5,8 @@ Signals
 -------
 progress(int)
     0-100 percentage (emitted before and after conversion).
-page_ready(int, str, str)
-    (page_index, page_name, svg_xml) — emitted for each converted page.
+page_ready(object)
+    PageInfo — emitted for each converted page.
 finished(list)
     Full list of PageInfo once all pages are done.
 error(str)
@@ -25,9 +25,9 @@ from converter import PageInfo, convert_vsdx
 class ConversionWorker(QThread):
     """Run :func:`convert_vsdx` off the main thread."""
 
-    progress = Signal(int)          # 0-100
-    page_ready = Signal(int, str, str)   # index, name, svg
-    finished = Signal(list)         # list[PageInfo]
+    progress = Signal(int)       # 0-100
+    page_ready = Signal(object)  # PageInfo
+    finished = Signal(list)      # list[PageInfo]
     error = Signal(str)
 
     def __init__(self, path: str, parent=None):
@@ -48,7 +48,7 @@ class ConversionWorker(QThread):
                 if self.isInterruptionRequested():
                     return
                 self._pages.append(page)
-                self.page_ready.emit(page.index, page.name, page.svg)
+                self.page_ready.emit(page)
                 pct = 5 + int(90 * (page.index + 1) / total)
                 self.progress.emit(pct)
             self.progress.emit(100)

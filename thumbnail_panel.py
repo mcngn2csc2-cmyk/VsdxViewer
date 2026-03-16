@@ -8,8 +8,6 @@ and displayed in a QListWidget.  Clicking a thumbnail emits
 
 from __future__ import annotations
 
-from typing import List
-
 from PySide6.QtCore import QByteArray, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
@@ -22,6 +20,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from converter import PageInfo
+
 THUMB_W = 160
 THUMB_H = 120
 THUMB_SIZE = QSize(THUMB_W, THUMB_H)
@@ -30,6 +30,19 @@ ICON_SIZE = QSize(THUMB_W - 8, THUMB_H - 8)
 _PLACEHOLDER_COLOR = QColor("#dde3ec")
 _BORDER_COLOR = QColor("#b0bec5")
 _SELECTED_BORDER = QColor("#1976d2")
+
+
+def _png_bytes_to_pixmap(png_bytes: bytes) -> QPixmap:
+    """PNG画像バイト列をサムネイルサイズのQPixmapに変換する。"""
+    pix = QPixmap()
+    pix.loadFromData(png_bytes, "PNG")
+    if pix.isNull():
+        return _placeholder_pixmap("?")
+    return pix.scaled(
+        ICON_SIZE,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
 
 
 def _render_svg_to_pixmap(svg_xml: str) -> QPixmap:
@@ -74,7 +87,6 @@ class ThumbnailPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._pages: List[str] = []   # svg strings indexed by page number
 
         self.setMinimumWidth(THUMB_W + 24)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
@@ -111,27 +123,24 @@ class ThumbnailPanel(QWidget):
     # ------------------------------------------------------------------
 
     def clear(self) -> None:
-        self._pages.clear()
         self._list.clear()
 
-    def add_page(self, index: int, name: str, svg_xml: str) -> None:
-        """Append thumbnail for page *index* (called as pages arrive)."""
-        # Grow the list to accommodate out-of-order arrivals
-        while len(self._pages) <= index:
-            self._pages.append("")
-        self._pages[index] = svg_xml
-
-        pix = _render_svg_to_pixmap(svg_xml)
-        item = QListWidgetItem(pix, f"{index + 1}. {name}")
-        item.setData(Qt.ItemDataRole.UserRole, index)
+    def add_page(self, page: PageInfo) -> None:
+        """ページのサムネイルを追加する（ページ到着時に呼ばれる）。"""
+        if page.png_bytes:
+            pix = _png_bytes_to_pixmap(page.png_bytes)
+        else:
+            pix = _render_svg_to_pixmap(page.svg)
+        item = QListWidgetItem(pix, f"{page.index + 1}. {page.name}")
+        item.setData(Qt.ItemDataRole.UserRole, page.index)
         item.setSizeHint(THUMB_SIZE + QSize(8, 24))
         item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
 
-        # Insert at correct position
-        self._list.insertItem(index, item)
+        # 正しい位置に挿入
+        self._list.insertItem(page.index, item)
 
-        # Select first page automatically
-        if index == 0 and self._list.currentRow() < 0:
+        # 最初のページは自動選択
+        if page.index == 0 and self._list.currentRow() < 0:
             self._list.setCurrentRow(0)
 
     def select_page(self, index: int) -> None:

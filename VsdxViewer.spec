@@ -59,9 +59,19 @@ a = Analysis(
         "PySide6.QtPositioning",
         # App modules
         "converter",
+        "pdf_converter",
         "worker",
         "thumbnail_panel",
         "web_viewer",
+        # Visio COM (pywin32)
+        "win32com",
+        "win32com.client",
+        "win32com.server",
+        "pywintypes",
+        "win32api",
+        # PyMuPDF
+        "fitz",
+        "fitz.utils",
     ],
     hookspath=[],
     hooksconfig={},
