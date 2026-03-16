@@ -24,7 +24,8 @@ class PageInfo:
     index: int
     name: str
     svg: str = ""            # SVG文字列（SVG変換モード）
-    png_bytes: bytes = b""   # PNG画像データ（Visio COMモード）
+    png_bytes: bytes = b""   # PNG画像データ（Visio COMまたはプレビュー抽出モード）
+    source: str = ""         # "visio_com" | "preview" | "svg"
 
 
 def convert_vsdx(path: str | os.PathLike) -> List[PageInfo]:
@@ -50,14 +51,29 @@ def convert_vsdx(path: str | os.PathLike) -> List[PageInfo]:
     # Visio COM経由の高品質変換を優先
     try:
         from pdf_converter import convert_vsdx_via_visio  # noqa: PLC0415
-        return convert_vsdx_via_visio(path)
+        pages = convert_vsdx_via_visio(path)
+        for p in pages:
+            p.source = "visio_com"
+        return pages
     except Exception:
         pass
 
-    # フォールバック: libvisio-ng によるSVG変換
+    # フォールバック1: VSDX内蔵プレビュー画像を抽出（Visio不要）
+    try:
+        from preview_extractor import extract_preview_pages  # noqa: PLC0415
+        previews = extract_preview_pages(path)
+        if previews:
+            return [
+                PageInfo(index=i, name=name or f"Page {i + 1}", png_bytes=png, source="preview")
+                for i, (name, png) in enumerate(previews)
+            ]
+    except Exception:
+        pass
+
+    # フォールバック2: libvisio-ng によるSVG変換
     raw_pages = _run_libvisio_ng(path)
     return [
-        PageInfo(index=i, name=name or f"Page {i + 1}", svg=svg)
+        PageInfo(index=i, name=name or f"Page {i + 1}", svg=svg, source="svg")
         for i, (name, svg) in enumerate(raw_pages)
     ]
 

@@ -272,9 +272,27 @@ class MainWindow(QMainWindow):
         total = len(pages)
 
         # 使用した変換モードをステータスバーに表示
-        if pages and pages[0].png_bytes:
+        source = pages[0].source if pages else ""
+        if source == "visio_com":
             mode = "Visio COM (高品質)"
             self._status_label.setToolTip("")
+        elif source == "preview":
+            mode = "プレビュー抽出モード ※Visioなし"
+            self._status_label.setToolTip(
+                "Microsoft Visio が見つからないため、VSDX内蔵プレビュー画像を使用しています。\n"
+                "ファイルに埋め込まれたプレビュー画像のため、最新の編集内容が反映されていない場合があります。\n"
+                "Visio をインストールすると印刷範囲に忠実な高品質表示になります。"
+            )
+            if not self._svg_mode_warned:
+                self._svg_mode_warned = True
+                QMessageBox.information(
+                    self,
+                    "プレビュー抽出モードで動作中",
+                    "Microsoft Visio が見つからないため、VSDX内蔵プレビュー画像で表示しています。\n\n"
+                    "・ファイルに保存済みのプレビュー画像を表示します\n"
+                    "・最後に保存した時点の内容が表示されます\n"
+                    "・高品質表示には Microsoft Visio のインストールが必要です",
+                )
         else:
             mode = "SVG モード ※Visioなし"
             self._status_label.setToolTip(
