@@ -60,6 +60,7 @@ a = Analysis(
         # App modules
         "converter",
         "pdf_converter",
+        "preview_extractor",
         "worker",
         "thumbnail_panel",
         "web_viewer",
